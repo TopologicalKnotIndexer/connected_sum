@@ -1,0 +1,3 @@
+[submodule "src/pd_code_input_sanity"]
+	path = src/pd_code_input_sanity
+	url = git@github.com:TopologicalKnotIndexer/pd_code_input_sanity.git
