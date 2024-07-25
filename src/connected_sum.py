@@ -3,6 +3,7 @@
 
 import json
 from input_sanity import input_sanity
+from in_out_code  import in_out_code
 
 def __renumber(pd_code: list) -> list: # 对 PD_CODE 中的弧线从 1 开始重新编号
     int_val = []
@@ -30,31 +31,8 @@ def __shift_arc_index(pd_code: list, shift_len: int) -> list: # 对所有编号�
         new_pd_code.append(new_crossing)
     return new_pd_code
 
-def __status_reverse(status: str):
-    assert status in ["IN", "OUT"] and status is not None
-    if status == "IN":
-        return "OUT" # 获得出入状态的相反相态
-    else:
-        return "IN"
-
 def __get_in_out_code(pd_code:list) -> list:
-    in_out_code = []
-    for _ in pd_code: # 第一个弧线一定是 IN,第三个弧线一定是 OUT
-        in_out_code.append(["IN", None, "OUT", None])
-    in_out_status = {}
-    for i in range(len(pd_code)):
-        for j in range(4): # 考虑每一个弧线，是否做过入弧线，是否做过出弧线
-            if in_out_code[i][j] is not None:
-                in_out_status[pd_code[i][j]] = in_out_code[i][j]
-    for i in range(len(pd_code)):
-        for j in range(4):
-            if in_out_code[i][j] is None:
-                if in_out_status.get(pd_code[i][j]) is not None:
-                    in_out_code[i][j] = __status_reverse(in_out_status[pd_code[i][j]])
-                else:
-                    assert in_out_status.get(pd_code[i][(j+2) % 4]) is not None
-                    in_out_code[i][j] = __status_reverse(in_out_status[pd_code[i][(j + 2) % 4]])
-    return in_out_code
+    return in_out_code(pd_code)
 
 def __update(pd_code, in_out_code, val_old, status, val_new): # 更新一个位置
     assert status in ["IN", "OUT"]
