@@ -5,21 +5,8 @@ import json
 from input_sanity import input_sanity
 from in_out_code  import in_out_code
 
-def __renumber(pd_code: list) -> list: # 对 PD_CODE 中的弧线从 1 开始重新编号
-    int_val = []
-    for crossing in pd_code:           # 获得所有出现过的弧线编号
-        for x in crossing:
-            if x not in int_val:
-                int_val.append(x)
-    int_val = sorted(int_val)           # 把编号重新排序
-    int_dic = {}
-    for idx, val in enumerate(int_val): # 构建编号映射
-        int_dic[val] = idx + 1          # 保证编号为从 1 开始的一段连续自然数
-    new_pd_code = []
-    for crossing in pd_code:            # 对所有弧线进行重新编号
-        new_crossing = [int_dic[x] for x in crossing]
-        new_pd_code.append(new_crossing)
-    return new_pd_code
+def __renumber(pd_code): # 我们要求合法的 pd_code 本身就必须从 1 开始连续编号
+    return pd_code
 
 def __max_arc_index(pd_code: list) -> int: # 获得最大的弧线编号
     return max([max(crossing) for crossing in pd_code])
