@@ -34,9 +34,7 @@ def __update(pd_code, in_out_code, val_old, status, val_new): # 更新一个位�
 # 且 pd_code1 的最小弧线编号为 1
 # 且 pd_code2 的最小弧线编号为 n1 + 1
 # 将两个 pd_code 合并得到连通和的 pd_code
-def __merge_pd_code(pd_code1, pd_code2, n1, n2) -> list:
-    in_out_code1 = __get_in_out_code(pd_code1) # 获得与 pd_code 结构一致的 in_out_code
-    in_out_code2 = __get_in_out_code(pd_code2)
+def __merge_pd_code(pd_code1, pd_code2, in_out_code1, in_out_code2, n1, n2) -> list:
     new_pd_code1 = __update(pd_code1, in_out_code1, 1   , "OUT", n1 + 1)
     new_pd_code2 = __update(pd_code2, in_out_code2, n1+1, "OUT",      1)
     return new_pd_code1 + new_pd_code2
@@ -53,13 +51,15 @@ def connected_sum(pd_code1: list, pd_code2: list) -> list:
         return pd_code1
     pd_code1 = __renumber(pd_code1)             # 对 PD_CODE 中的所有弧线，进行重编号
     pd_code2 = __renumber(pd_code2)
+    in_out_code1 = __get_in_out_code(pd_code1) # 获得与 pd_code 结构一致的 in_out_code
+    in_out_code2 = __get_in_out_code(pd_code2)
     n1       = __max_arc_index(pd_code1)        # 计算两个扭结的最大弧线编号
     n2       = __max_arc_index(pd_code2)
-    pd_code2 = __shift_arc_index(pd_code2, n1)  # 对所有第二个扭结中的编号 + n1
-    return __merge_pd_code(pd_code1, pd_code2, n1, n2)
+    pd_code2 = __shift_arc_index(pd_code2, n1)  # 对所有第二个扭结中的编号 + n1，计算 IN/OUT 一定要在 shift 之前
+    return __merge_pd_code(pd_code1, pd_code2, in_out_code1, in_out_code2, n1, n2)
 
 if __name__ == "__main__":
     print(connected_sum(
-        [[1,5,2,4],[3,9,4,8],[5,11,6,10],[7,3,8,2],[9,7,10,6],[16,14,1,13],[14,12,15,11],[12,16,13,15]],
-        [[1, 5, 2, 4], [3, 9, 4, 8], [5, 1, 6, 10], [7, 3, 8, 2], [9, 7, 10, 6]]
+        [[1, 5, 2, 4], [3, 1, 4, 6], [5, 3, 6, 2]],
+        [[1, 5, 2, 4], [3, 1, 4, 6], [5, 3, 6, 2]]
     ))
