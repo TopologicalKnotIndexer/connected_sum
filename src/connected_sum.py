@@ -1,65 +1,153 @@
-# 给定两个扭结的 PD_CODE
-# 计算他们连通和的 PD_CODE
+"""Compute a deterministic connected sum of two oriented knot PD codes."""
 
-import json
+from copy import deepcopy
+
 from input_sanity import input_sanity
-from in_out_code  import in_out_code
 
-def __renumber(pd_code): # 我们要求合法的 pd_code 本身就必须从 1 开始连续编号
-    return pd_code
 
-def __max_arc_index(pd_code: list) -> int: # 获得最大的弧线编号
-    return max([max(crossing) for crossing in pd_code])
+def _labels(pd_code: list[list[int]]) -> list[int]:
+    return sorted({label for crossing in pd_code for label in crossing})
 
-def __shift_arc_index(pd_code: list, shift_len: int) -> list: # 对所有编号进行整体平移
-    new_pd_code = []
+
+def _canonical_cycle(component: set[int], adjacency: dict[int, set[int]]) -> list[int]:
+    start = min(component)
+    neighbors = sorted(adjacency[start])
+    if len(component) == 2 and len(neighbors) == 1:
+        return [start, neighbors[0]]
+    if len(neighbors) != 2:
+        raise ValueError("the PD component graph is not a cycle")
+
+    candidates: list[list[int]] = []
+    for first in neighbors:
+        cycle = [start]
+        previous, current = start, first
+        while current != start:
+            if current in cycle:
+                raise ValueError("the PD component graph contains a short cycle")
+            cycle.append(current)
+            next_nodes = adjacency[current] - {previous}
+            if len(next_nodes) != 1:
+                raise ValueError("the PD component graph is not 2-regular")
+            previous, current = current, next(iter(next_nodes))
+        if len(cycle) != len(component):
+            raise ValueError("the PD component graph is disconnected")
+        candidates.append(cycle)
+    return min(candidates)
+
+
+def _pre_nxt(pd_code: list[list[int]]) -> tuple[dict[int, int], dict[int, int]]:
+    adjacency: dict[int, set[int]] = {}
     for crossing in pd_code:
-        new_crossing = [x + shift_len for x in crossing]
-        new_pd_code.append(new_crossing)
-    return new_pd_code
+        for left, right in ((crossing[0], crossing[2]), (crossing[1], crossing[3])):
+            adjacency.setdefault(left, set()).add(right)
+            adjacency.setdefault(right, set()).add(left)
 
-def __get_in_out_code(pd_code:list) -> list:
-    return in_out_code(pd_code)
+    pre: dict[int, int] = {}
+    nxt: dict[int, int] = {}
+    seen: set[int] = set()
+    for start in _labels(pd_code):
+        if start in seen:
+            continue
+        component: set[int] = set()
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            if node in component:
+                continue
+            component.add(node)
+            stack.extend(adjacency[node] - component)
+        cycle = _canonical_cycle(component, adjacency)
+        seen.update(component)
+        for index, node in enumerate(cycle):
+            pre[node] = cycle[index - 1]
+            nxt[node] = cycle[(index + 1) % len(cycle)]
+    return pre, nxt
 
-def __update(pd_code, in_out_code, val_old, status, val_new): # 更新一个位置
-    assert status in ["IN", "OUT"]
-    new_pd_code = json.loads(json.dumps(pd_code))
-    for i in range(len(pd_code)):
-        for j in range(4):
-            if pd_code[i][j] == val_old and in_out_code[i][j] == status:
-                new_pd_code[i][j] = val_new
-    return new_pd_code
 
-# 假定 pd_code1 和 pd_code2 都满足编号连续
-# 且 pd_code1 的最小弧线编号为 1
-# 且 pd_code2 的最小弧线编号为 n1 + 1
-# 将两个 pd_code 合并得到连通和的 pd_code
-def __merge_pd_code(pd_code1, pd_code2, in_out_code1, in_out_code2, n1, n2) -> list:
-    new_pd_code1 = __update(pd_code1, in_out_code1, 1   , "OUT", n1 + 1)
-    new_pd_code2 = __update(pd_code2, in_out_code2, n1+1, "OUT",      1)
-    return new_pd_code1 + new_pd_code2
+def _normalize(pd_code: list[list[int]]) -> tuple[list[list[int]], dict[int, int]]:
+    """Orient components deterministically and relabel them contiguously."""
 
-# 计算两个扭结的连通和
-# 这个算法不一定正确，这个算法假定两个扭结的 1 号弧线都位于扭结的 “最外圈
-# 将来可能会对这个算法进行必要的修改
-def connected_sum(pd_code1: list, pd_code2: list) -> list:
-    pd_code1 = input_sanity(pd_code1)           # 对输入数据的格式进行必要的检查
-    pd_code2 = input_sanity(pd_code2)
-    if len(pd_code1) < len(pd_code2):
-        pd_code1, pd_code2 = pd_code2, pd_code1 # 让 pd_code2 中存储的 list 更短
-    if len(pd_code2) == 0:                      # 考虑平凡扭结的连通和情况
-        return pd_code1
-    pd_code1 = __renumber(pd_code1)             # 对 PD_CODE 中的所有弧线，进行重编号
-    pd_code2 = __renumber(pd_code2)
-    in_out_code1 = __get_in_out_code(pd_code1) # 获得与 pd_code 结构一致的 in_out_code
-    in_out_code2 = __get_in_out_code(pd_code2)
-    n1       = __max_arc_index(pd_code1)        # 计算两个扭结的最大弧线编号
-    n2       = __max_arc_index(pd_code2)
-    pd_code2 = __shift_arc_index(pd_code2, n1)  # 对所有第二个扭结中的编号 + n1，计算 IN/OUT 一定要在 shift 之前
-    return __merge_pd_code(pd_code1, pd_code2, in_out_code1, in_out_code2, n1, n2)
+    if not pd_code:
+        return [], {}
+    _, nxt = _pre_nxt(pd_code)
+    old_to_new: dict[int, int] = {}
+    next_label = 1
+    for start in _labels(pd_code):
+        if start in old_to_new:
+            continue
+        current = start
+        while current not in old_to_new:
+            old_to_new[current] = next_label
+            next_label += 1
+            current = nxt[current]
+
+    normalized = [[old_to_new[label] for label in crossing] for crossing in pd_code]
+    normalized_next = {old_to_new[label]: old_to_new[target] for label, target in nxt.items()}
+    for index, crossing in enumerate(normalized):
+        if normalized_next[crossing[0]] == crossing[2]:
+            continue
+        if normalized_next[crossing[2]] == crossing[0]:
+            normalized[index] = crossing[2:] + crossing[:2]
+        else:
+            raise ValueError("a crossing is inconsistent with the component orientation")
+    normalized.sort()
+    return normalized, old_to_new
+
+
+def _endpoint(
+    pd_code: list[list[int]], label: int, nxt: dict[int, int], pre: dict[int, int]
+) -> tuple[int, int]:
+    """Locate the crossing incidence immediately after the selected arc."""
+
+    slots = [
+        (row, column)
+        for row, crossing in enumerate(pd_code)
+        for column, value in enumerate(crossing)
+        if value == label
+    ]
+    if len(slots) != 2:
+        raise ValueError("a connected-sum label must occur exactly twice")
+    if nxt[label] == pre[label]:
+        return slots[1]
+    target = nxt[label]
+    for row, column in slots:
+        if pd_code[row][(column + 2) % 4] == target:
+            return row, column
+    raise ValueError("could not locate the oriented endpoint of the selected arc")
+
+
+def connected_sum(
+    pd_code1: str | list[list[int]], pd_code2: str | list[list[int]]
+) -> list[list[int]]:
+    """Return a canonical PD code for the connected sum of two oriented knots.
+
+    The component containing the smallest label in each input is selected. For
+    the intended knot inputs this is the unique component. Empty PD codes are
+    treated as the unknot. Caller-owned lists are never mutated.
+    """
+
+    first_input = input_sanity(pd_code1)
+    second_input = input_sanity(pd_code2)
+    if not first_input or not second_input:
+        return _normalize(deepcopy(first_input or second_input))[0]
+
+    first, _ = _normalize(first_input)
+    second_base, _ = _normalize(second_input)
+    offset = 2 * len(first)
+    second = [[label + offset for label in crossing] for crossing in second_base]
+
+    first_label = min(_labels(first))
+    second_label = min(_labels(second))
+    pre_first, nxt_first = _pre_nxt(first)
+    pre_second, nxt_second = _pre_nxt(second)
+    first_row, first_column = _endpoint(first, first_label, nxt_first, pre_first)
+    second_row, second_column = _endpoint(second, second_label, nxt_second, pre_second)
+
+    first[first_row][first_column] = second_label
+    second[second_row][second_column] = first_label
+    return _normalize(first + second)[0]
+
 
 if __name__ == "__main__":
-    print(connected_sum(
-        [[1, 5, 2, 4], [3, 1, 4, 6], [5, 3, 6, 2]],
-        [[1, 5, 2, 4], [3, 1, 4, 6], [5, 3, 6, 2]]
-    ))
+    trefoil = [[1, 5, 2, 4], [3, 1, 4, 6], [5, 3, 6, 2]]
+    print(connected_sum(trefoil, trefoil))

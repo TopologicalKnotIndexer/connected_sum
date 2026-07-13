@@ -1,22 +1,40 @@
-# 桥接：https://github.com/TopologicalKnotIndexer/get_in_out_code
-import os
-DIRNOW = os.path.dirname(os.path.abspath(__file__))
-SUBDIR = os.path.join(DIRNOW, "get_in_out_code", "src") # 子包路径
+"""Derive incidence directions for canonically labelled PD codes."""
+
+from collections import Counter
 
 
-# ======================================== BEGIN IMPORT FROM PATH ======================================== #
-import importlib
-import json
-import sys
-def load_module_from_path(path: str, mod_name: str): # 从指定路径导入一个包
-    assert os.path.isdir(path)                       # 路径必须存在
-    path         = os.path.abspath(path)             # 获得绝对路径
-    old_sys_path = json.loads(json.dumps(sys.path))  # 存档旧的 sys.path
-    sys.path     = [path] + sys.path                 # 将新的路径加入 sys.path
-    mod          = importlib.import_module(mod_name) # 加载指定的包
-    sys.path     = old_sys_path                      # 恢复旧的 sys.path
-    return mod
-# ======================================== END IMPORT FROM PATH ======================================== #
+def _successor(label: int, maximum: int) -> int:
+    return 1 if label == maximum else label + 1
 
-def in_out_code(pd_code: list):
-    return load_module_from_path(SUBDIR, "get_in_out_code").get_in_out_code(pd_code)
+
+def in_out_code(pd_code: list[list[int]]) -> list[list[str]]:
+    """Return the ``IN``/``OUT`` state of every crossing incidence.
+
+    Labels must be the canonical contiguous range ``1..2n`` and each label
+    must occur twice. The second/fourth pair is oriented by cyclic adjacency.
+    """
+
+    if not isinstance(pd_code, list):
+        raise TypeError("pd_code must be a list")
+    labels: list[int] = []
+    for crossing in pd_code:
+        if not isinstance(crossing, list) or len(crossing) != 4:
+            raise ValueError("every crossing must be a four-item list")
+        if any(isinstance(label, bool) or not isinstance(label, int) for label in crossing):
+            raise TypeError("arc labels must be integers")
+        labels.extend(crossing)
+
+    maximum = 2 * len(pd_code)
+    counts = Counter(labels)
+    if set(counts) != set(range(1, maximum + 1)) or any(count != 2 for count in counts.values()):
+        raise ValueError("labels must be exactly 1..2n and each label must occur twice")
+
+    result: list[list[str]] = []
+    for _, second, _, fourth in pd_code:
+        if second == _successor(fourth, maximum):
+            result.append(["IN", "OUT", "OUT", "IN"])
+        elif fourth == _successor(second, maximum):
+            result.append(["IN", "IN", "OUT", "OUT"])
+        else:
+            raise ValueError("the second and fourth labels must be consecutive along the component")
+    return result

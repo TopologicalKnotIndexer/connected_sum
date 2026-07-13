@@ -1,4 +1,4 @@
-"""Safe parsing and weak structural validation for PD codes."""
+"""Safely parse and perform weak structural validation of a PD code."""
 
 from ast import literal_eval
 from collections import Counter
@@ -6,11 +6,11 @@ from copy import deepcopy
 
 
 def input_sanity(value: str | list[list[int]]) -> list[list[int]]:
-    """Return a validated copy of *value* without executing input text.
+    """Return a validated PD code without executing input as Python code.
 
-    This validator checks the representation invariants used by the connected-
-    sum algorithm. It does not claim that every accepted code has a planar
-    realization.
+    This is intentionally a *weak* validator: it checks the container shape,
+    integer label type, and the rule that every arc label occurs exactly twice.
+    It does not prove that the code has a planar realization.
     """
 
     if isinstance(value, str):
@@ -34,12 +34,12 @@ def input_sanity(value: str | list[list[int]]) -> list[list[int]]:
             raise ValueError("every crossing must contain exactly four labels")
         for label in crossing:
             if isinstance(label, bool) or not isinstance(label, int):
-                raise TypeError("arc labels must be integers")
+                raise TypeError("arc labels must be integers, not booleans or other values")
             labels.append(label)
 
-    invalid = {label: count for label, count in Counter(labels).items() if count != 2}
-    if invalid:
-        details = ", ".join(f"{label}: {count}" for label, count in sorted(invalid.items()))
+    invalid_counts = {label: count for label, count in Counter(labels).items() if count != 2}
+    if invalid_counts:
+        details = ", ".join(f"{label}: {count}" for label, count in sorted(invalid_counts.items()))
         raise ValueError(f"every arc label must occur exactly twice; observed {details}")
     return parsed
 
