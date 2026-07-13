@@ -2,7 +2,10 @@
 
 from copy import deepcopy
 
-from input_sanity import input_sanity
+try:
+    from .input_sanity import input_sanity
+except ImportError:  # Direct execution from the src directory.
+    from input_sanity import input_sanity
 
 
 def _labels(pd_code: list[list[int]]) -> list[int]:
