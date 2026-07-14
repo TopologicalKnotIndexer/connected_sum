@@ -64,3 +64,16 @@ runtime code no longer performs dynamic submodule-style imports. See
 `VENDORED_DEPENDENCIES.md` for the audited source commits.
 
 No PyPI publication is performed as part of repository maintenance.
+
+## Citation
+
+If you use this repository in academic work, please cite it as:
+
+```bibtex
+@software{topologicalknotindexer_connected_sum,
+  author = {{TopologicalKnotIndexer contributors}},
+  title = {{connected\_sum}},
+  year = {2026},
+  url = {https://github.com/TopologicalKnotIndexer/connected_sum}
+}
+```
