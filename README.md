@@ -71,7 +71,7 @@ If you use this repository in academic work, please cite it as:
 
 ```bibtex
 @software{topologicalknotindexer_connected_sum,
-  author = {{TopologicalKnotIndexer contributors}},
+  author = {{GGN\_2015}},
   title = {{connected\_sum}},
   year = {2026},
   url = {https://github.com/TopologicalKnotIndexer/connected_sum}
